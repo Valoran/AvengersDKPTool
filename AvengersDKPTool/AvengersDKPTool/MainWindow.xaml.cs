@@ -1,8 +1,10 @@
-﻿using System;
+﻿using AvengersDKPTool.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -32,10 +34,14 @@ namespace AvengersDKPTool
             {
                 GamePathBox.Text = File.ReadAllText(Path.Combine(_appRoot, "gamepath.txt"));
             }
+            RefreshLists();
+        }
+        private void RefreshLists()
+        {
             if (File.Exists(Path.Combine(_appRoot, "mains.txt")))
             {
                 var list = File.ReadAllLines(Path.Combine(_appRoot, "mains.txt"));
-                _mains = list.ToHashSet();
+                _mains = list.OrderBy(x=>x.ToUpper()).ToHashSet();
             }
             else
             {
@@ -47,7 +53,7 @@ namespace AvengersDKPTool
             if (File.Exists(Path.Combine(_appRoot, "alts.txt")))
             {
                 var list = File.ReadAllLines(Path.Combine(_appRoot, "alts.txt"));
-                foreach(var alt in list)
+                foreach (var alt in list)
                 {
                     var s = alt.Split("::", StringSplitOptions.RemoveEmptyEntries);
                     _alts.Add(s[1], s[0]);
@@ -55,7 +61,6 @@ namespace AvengersDKPTool
             }
             AltsList.ItemsSource = _alts;
         }
-
         private void GamePathBrowse_Click(object sender, RoutedEventArgs e)
         {
             var ookiiDialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
@@ -78,19 +83,19 @@ namespace AvengersDKPTool
                     File.WriteAllText(Path.Combine(_appRoot, "gamepath.txt"), GamePathBox.Text);
                 }
                 var raidDumpFiles = Directory.GetFiles(GamePathBox.Text, "RaidRoster*.txt");
-                DumpFilesList.ItemsSource = raidDumpFiles;
+                
+                DumpFilesList.ItemsSource = raidDumpFiles.Select(x=>x.Replace(GamePathBox.Text, ""));
                 if (Directory.Exists(Path.Combine(GamePathBox.Text, "Logs")))
                 {
                     var chatlogFiles = Directory.GetFiles(Path.Combine(GamePathBox.Text, "Logs"), "eqlog*.txt");
-                    ChatLogList.ItemsSource = chatlogFiles;
+                    ChatLogList.ItemsSource = chatlogFiles.Select(x=>x.Replace(GamePathBox.Text, ""));
                 }
             }
         }
 
         private void DumpFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var content = File.ReadAllLines((string)DumpFilesList.SelectedItem);
-
+            var content = File.ReadAllLines(GamePathBox.Text + (string)DumpFilesList.SelectedItem);
             var list = new List<string>();
             foreach(var s in content)
             {
@@ -113,15 +118,41 @@ namespace AvengersDKPTool
                 }
                 else
                 {
-                    var res = MessageBox.Show("", "Unknown Char", MessageBoxButton.YesNo);
-                    if(res == MessageBoxResult.Yes)
-                    {
+                    var newCharWnd = new AddCharWindow(charname, _mains);
 
-                    }
+                    newCharWnd.Left = this.Left + 150;
+                    newCharWnd.Top = this.Top + 50;
+                    newCharWnd.ShowDialog();
+                    RefreshLists();
                 }
             }
+            AttendeeGrid.ItemsSource = list;
+        }
 
-            
+        private void ChatLogList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if(ChatLogList.SelectedIndex != -1)
+            {
+                var path = GamePathBox.Text+(string)ChatLogList.SelectedItem;
+                if (File.Exists(path))
+                {
+                    var mainRegex = new Regex("auction category.+?grat", RegexOptions.IgnoreCase);
+                    var data = new HashSet<string>();
+                    var lines = File.ReadAllLines(path);
+                    foreach(var line in lines)
+                    {
+                        if (mainRegex.IsMatch(line))
+                        {
+                            data.Add(line);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+                    LootList.ItemsSource = data;
+                }
+            }
         }
     }
 }

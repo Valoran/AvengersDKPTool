@@ -19,13 +19,14 @@
                     </Grid.ColumnDefinitions>
                     <Label Content="Dump files" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2" Width="118"/>
                     <ListBox x:Name="DumpFilesList" Margin="10,41,569,0" Grid.ColumnSpan="2" SelectionChanged="DumpFilesList_SelectionChanged" />
-                    <DataGrid x:Name="AttendeeGrid" Grid.Column="1" Margin="216,41,0,0"/>
+                    <ListBox x:Name="AttendeeGrid" Grid.Column="1" Margin="267,41,0,0"/>
                 </Grid>
             </TabItem>
             <TabItem x:Name="LootTab" Header="Loot">
                 <Grid Background="#FFE5E5E5">
-                    <ListBox x:Name="ChatLogList" Margin="0,28,573,0"/>
+                    <ListBox x:Name="ChatLogList" Margin="0,28,573,0" SelectionChanged="ChatLogList_SelectionChanged"/>
                     <Label Content="Logs" HorizontalAlignment="Left" Margin="10,-3,0,0" VerticalAlignment="Top"/>
+                    <ListBox x:Name="LootList" Margin="252,28,0,0"/>
                 </Grid>
             </TabItem>
 
