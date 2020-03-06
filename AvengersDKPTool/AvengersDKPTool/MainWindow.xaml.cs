@@ -1,6 +1,8 @@
-﻿using AvengersDKPTool.Models;
+﻿using AvengersDKPTool.Api;
+using AvengersDKPTool.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -25,8 +27,9 @@ namespace AvengersDKPTool
     public partial class MainWindow : Window
     {
         private readonly string _appRoot = Directory.GetCurrentDirectory();
-        private HashSet<string> _mains;
-        private Dictionary<string, string> _alts;
+        private HashSet<EqDkpPlayer> _mains;
+        private HashSet<EqDkpPlayer> _allChars;
+        private ApiMethods _api;
         public MainWindow()
         {
             InitializeComponent();
@@ -34,32 +37,38 @@ namespace AvengersDKPTool
             {
                 GamePathBox.Text = File.ReadAllText(Path.Combine(_appRoot, "gamepath.txt"));
             }
+            if (File.Exists(Path.Combine(_appRoot, "token.txt")))
+            {
+                ApiToken.Text = File.ReadAllText(Path.Combine(_appRoot, "token.txt"));
+                
+            }
+            _api = new ApiMethods(ApiToken.Text);
             RefreshLists();
         }
-        private void RefreshLists()
+        private async void RefreshLists()
         {
-            if (File.Exists(Path.Combine(_appRoot, "mains.txt")))
+            var players = await _api.GetRosterAsync();
+            _allChars = players.Select(x=>x.Value).ToHashSet();
+            _mains = new HashSet<EqDkpPlayer>();
+            foreach (var p in _allChars)
             {
-                var list = File.ReadAllLines(Path.Combine(_appRoot, "mains.txt"));
-                _mains = list.OrderBy(x=>x.ToUpper()).ToHashSet();
+                if(p.Active && p.Id == p.MainId)
+                {
+                    _mains.Add(p);
+                }
+            }
+            MainsList.ItemsSource = _mains;
+            if (await _api.ValidateTokenAsync())
+            {
+                File.WriteAllText(Path.Combine(_appRoot, "token.txt"), ApiToken.Text);
+                ApiKeyValid.Visibility = Visibility.Visible;
+                ApiKeyInvalid.Visibility = Visibility.Hidden;
             }
             else
             {
-                _mains = new HashSet<string>();
+                ApiKeyValid.Visibility = Visibility.Hidden;
+                ApiKeyInvalid.Visibility = Visibility.Visible;
             }
-            MainsList.ItemsSource = _mains;
-
-            _alts = new Dictionary<string, string>();
-            if (File.Exists(Path.Combine(_appRoot, "alts.txt")))
-            {
-                var list = File.ReadAllLines(Path.Combine(_appRoot, "alts.txt"));
-                foreach (var alt in list)
-                {
-                    var s = alt.Split("::", StringSplitOptions.RemoveEmptyEntries);
-                    _alts.Add(s[1], s[0]);
-                }
-            }
-            AltsList.ItemsSource = _alts;
         }
         private void GamePathBrowse_Click(object sender, RoutedEventArgs e)
         {
@@ -83,8 +92,19 @@ namespace AvengersDKPTool
                     File.WriteAllText(Path.Combine(_appRoot, "gamepath.txt"), GamePathBox.Text);
                 }
                 var raidDumpFiles = Directory.GetFiles(GamePathBox.Text, "RaidRoster*.txt");
-                
-                DumpFilesList.ItemsSource = raidDumpFiles.Select(x=>x.Replace(GamePathBox.Text, ""));
+                var dateRegex = new Regex(@"\d{8}-\d{6}");
+                var logs = new HashSet<RaidLogFileModel>();
+                foreach(var file in raidDumpFiles)
+                {
+                    
+                    var date = DateTime.ParseExact(dateRegex.Match(file).Value, "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+                    logs.Add(new RaidLogFileModel()
+                    {
+                        Date = date,
+                        File = file
+                    });
+                }
+                DumpFilesList.ItemsSource = logs;
                 if (Directory.Exists(Path.Combine(GamePathBox.Text, "Logs")))
                 {
                     var chatlogFiles = Directory.GetFiles(Path.Combine(GamePathBox.Text, "Logs"), "eqlog*.txt");
@@ -95,35 +115,30 @@ namespace AvengersDKPTool
 
         private void DumpFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var content = File.ReadAllLines(GamePathBox.Text + (string)DumpFilesList.SelectedItem);
-            var list = new List<string>();
+            var log = (RaidLogFileModel)DumpFilesList.SelectedItem;
+            var content = File.ReadAllLines(log.File);
+            var list = new List<EqDkpPlayer>();
             foreach(var s in content)
             {
                 var s1 = s.Split("\t", StringSplitOptions.RemoveEmptyEntries);
                 var charname = s1[1];
-                if (_mains.Contains(charname))
-                {
-                    if (!list.Contains(charname))
-                    {
-                        list.Add(charname);
-                    }
-                }
-                else if (_alts.ContainsKey(charname))
-                {
-                    var mainName = _alts[charname];
-                    if (!list.Contains(mainName))
-                    {
-                        list.Add(mainName);
-                    }
-                }
-                else
-                {
-                    var newCharWnd = new AddCharWindow(charname, _mains);
 
-                    newCharWnd.Left = this.Left + 150;
-                    newCharWnd.Top = this.Top + 50;
-                    newCharWnd.ShowDialog();
-                    RefreshLists();
+                var player = _allChars.FirstOrDefault(x => x.Name.ToLower() == charname.ToLower());
+                if(player == null)
+                {
+                    player = new EqDkpPlayer()
+                    {
+                        Name = charname
+                    };
+                }
+                else if(player.Id != player.MainId)
+                {
+                    player = _allChars.FirstOrDefault(x => x.Id == player.MainId);
+                }
+
+                if (!list.Contains(player))
+                {
+                    list.Add(player);
                 }
             }
             AttendeeGrid.ItemsSource = list;
@@ -153,6 +168,51 @@ namespace AvengersDKPTool
                     LootList.ItemsSource = data;
                 }
             }
+        }
+
+      
+
+        private async void ApiToken_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if(_api != null && !string.IsNullOrEmpty(ApiToken.Text))
+            {
+                _api.UpdateApiToken(ApiToken.Text);
+                if(await _api.ValidateTokenAsync())
+                {
+                    File.WriteAllText(Path.Combine(_appRoot, "token.txt"), ApiToken.Text);
+                    ApiKeyValid.Visibility = Visibility.Visible;
+                    ApiKeyInvalid.Visibility = Visibility.Hidden;
+                }
+                else
+                {
+                    ApiKeyValid.Visibility = Visibility.Hidden;
+                    ApiKeyInvalid.Visibility = Visibility.Visible;
+                }
+            }
+            else
+            {
+                ApiKeyValid.Visibility = Visibility.Hidden;
+                ApiKeyInvalid.Visibility = Visibility.Hidden;
+            }
+        }
+
+        private void MainsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if(MainsList.SelectedIndex != -1)
+            {
+                var selected = (EqDkpPlayer)MainsList.SelectedItem;
+
+                var alts = _allChars.Where(x => x.MainId == selected.Id && x.Id != selected.Id);
+                AltsList.ItemsSource = alts;
+            }
+        }
+
+        private async void UploadLogBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var players = (ICollection<EqDkpPlayer>)AttendeeGrid.ItemsSource;
+            var selectedLog = (RaidLogFileModel)DumpFilesList.SelectedItem;
+
+            await _api.UploadRaidLog(selectedLog.Date, RaidLogNote.Text, players.Where(x => x.Id > 0).ToHashSet());
         }
     }
 }
