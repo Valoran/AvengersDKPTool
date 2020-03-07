@@ -90,8 +90,12 @@ namespace AvengersDKPTool.Api
             if (response.IsSuccessStatusCode)
             {
                 var rosterString = await response.Content.ReadAsStringAsync();
-
-                return true;
+                dynamic parsed = JsonConvert.DeserializeObject(rosterString);
+                if (parsed.status == 1)
+                {
+                    return true;
+                }
+                else return false;
             }
             else
             {

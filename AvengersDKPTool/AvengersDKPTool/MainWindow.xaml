@@ -17,19 +17,27 @@
                         <ColumnDefinition Width="29*"/>
                         <ColumnDefinition Width="765*"/>
                     </Grid.ColumnDefinitions>
-                    <Label Content="Dump files" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2" Width="118"/>
-                    <ListBox x:Name="DumpFilesList" Margin="10,41,495,0" Grid.ColumnSpan="2" SelectionChanged="DumpFilesList_SelectionChanged" >
+                    <Label Content="New Logs" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2" Width="118"/>
+                    <ListBox x:Name="DumpFilesList" Margin="10,41,617,0" Grid.ColumnSpan="2" SelectionChanged="DumpFilesList_SelectionChanged" >
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Background" Value="White"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Parsed}" Value="True" >
+                                        <Setter Property="Background" Value="Green"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
-
                             <DataTemplate>
                                 <TextBlock Text="{Binding Date, ConverterCulture=sv-SE}" >
-
                                 </TextBlock>
                             </DataTemplate>
-
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <ListBox x:Name="AttendeeGrid" Grid.Column="1" Margin="346,41,190,0">
+                    <Label Content="Players" HorizontalAlignment="Left" Margin="176,10,0,0" VerticalAlignment="Top" Width="118" Grid.Column="1"/>
+                    <ListBox x:Name="AttendeeGrid" Grid.Column="1" Margin="176,41,360,0">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="Background" Value="White"/>
@@ -50,8 +58,8 @@
 
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <Button x:Name="UploadLogBtn" Content="Upload Log" HorizontalAlignment="Left" Margin="601,72,0,0" VerticalAlignment="Top" Grid.Column="1" Click="UploadLogBtn_Click"/>
-                    <TextBox x:Name="RaidLogNote" Grid.Column="1" HorizontalAlignment="Left" Margin="601,41,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120"/>
+                    <Button x:Name="UploadLogBtn" Content="Upload Log" HorizontalAlignment="Left" Margin="552,13,0,0" VerticalAlignment="Top" Grid.Column="1" Click="UploadLogBtn_Click" IsEnabled="False"/>
+                    <TextBox x:Name="RaidLogNote" Grid.Column="1" HorizontalAlignment="Left" Margin="427,14,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextChanged="RaidLogNote_TextChanged"/>
                 </Grid>
             </TabItem>
             <TabItem x:Name="LootTab" Header="Loot">
