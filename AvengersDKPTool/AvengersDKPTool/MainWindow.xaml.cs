@@ -192,7 +192,7 @@ namespace AvengersDKPTool
                             split = split.Where(x => x != charname).ToArray();
                             var item = string.Join(" ", split);
                             
-                            data.Add(item);
+                            data.Add(line);
                         }
                         else
                         {
@@ -245,7 +245,7 @@ namespace AvengersDKPTool
         {
             var players = (ICollection<EqDkpPlayer>)AttendeeGrid.ItemsSource;
             var selectedLog = (RaidLogFileModel)DumpFilesList.SelectedItem;
-
+            
             if (await _api.UploadRaidLog(selectedLog.Date, RaidLogNote.Text, players.Where(x => x.Id > 0).ToHashSet()))
             {
                 File.Move(selectedLog.File, selectedLog.File.Replace("RaidRoster", "UploadedRaidRoster"));

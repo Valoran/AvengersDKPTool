@@ -74,9 +74,13 @@ namespace AvengersDKPTool.Api
         public async Task<bool> UploadRaidLog(DateTime time,string note, ICollection<EqDkpPlayer> players)
         {
             var req = new HttpRequestMessage(HttpMethod.Post, "api.php?format=json&function=add_raid");
+            var updated = time.AddMinutes(30);
+            var roundedTime = new DateTime(updated.Year, updated.Month, updated.Day,
+                                 updated.Hour, 0, 0, time.Kind);
+
             var newRaid = new EqDkpNewRaidModel()
             {
-                RaidDate = time.ToString("yyyy-MM-dd HH:mm"),
+                RaidDate = roundedTime.ToString("yyyy-MM-dd HH:mm"),
                 RaidEventId = 1,
                 RaidNote = note,
                 RaidValue = 2,
