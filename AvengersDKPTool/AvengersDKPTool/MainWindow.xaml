@@ -64,9 +64,34 @@
             </TabItem>
             <TabItem x:Name="LootTab" Header="Loot">
                 <Grid Background="#FFE5E5E5">
-                    <ListBox x:Name="ChatLogList" Margin="0,28,573,0" SelectionChanged="ChatLogList_SelectionChanged"/>
+                    <ListBox x:Name="ChatLogList" Margin="0,28,573,0" MaxWidth="200" SelectionChanged="ChatLogList_SelectionChanged"/>
                     <Label Content="Logs" HorizontalAlignment="Left" Margin="10,-3,0,0" VerticalAlignment="Top"/>
-                    <ListBox x:Name="LootList" Margin="252,28,0,0"/>
+                    <DataGrid AutoGenerateColumns="False" x:Name="LootList" Margin="252,52,0,0">
+                        <DataGrid.Columns>
+                            <!--<DataGridTextColumn Header="Date" Width="80" Binding="{Binding Date, StringFormat='d', ConverterCulture=sv-SE}"/>-->
+                            <DataGridTextColumn Header="Item" Width="180" Binding="{Binding ItemName}"/>
+                            <DataGridTextColumn Header="Character" Width="120" Binding="{Binding Charname}"/>
+                            <DataGridTextColumn Header="Type" Width="80" Binding="{Binding Type}"/>
+                            <DataGridTextColumn Header="Bid" Binding="{Binding Cost}"/>
+                            <DataGridTextColumn Header="Cost" Binding="{Binding Calculated}"/>
+                            <DataGridCheckBoxColumn Header="Upload" Binding="{Binding Upload}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <DatePicker x:Name="ItemLogDate" HorizontalAlignment="Left" Margin="252,23,0,0" VerticalAlignment="Top" SelectedDateChanged="ItemLogDate_SelectedDateChanged" Width="128"/>
+                    <Label Content="Date" HorizontalAlignment="Left" Margin="252,0,0,0" VerticalAlignment="Top"/>
+                    <ComboBox x:Name="RaidSelectBox" HorizontalAlignment="Left" Margin="397,24,0,0" VerticalAlignment="Top" Width="292">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Date, StringFormat='g', ConverterCulture=sv-SE}"></TextBlock>
+                                    <TextBlock Text="  "></TextBlock>
+                                    <TextBlock Text="{Binding Note}"></TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Label Content="Raid" HorizontalAlignment="Left" Margin="397,0,0,0" VerticalAlignment="Top"/>
+                    <Button x:Name="UploadItemsBtn" Content="Upload Selected" HorizontalAlignment="Left" Margin="694,25,0,0" VerticalAlignment="Top"/>
                 </Grid>
             </TabItem>
 

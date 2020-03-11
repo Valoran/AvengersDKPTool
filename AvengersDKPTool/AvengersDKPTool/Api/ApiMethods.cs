@@ -58,19 +58,6 @@ namespace AvengersDKPTool.Api
             return new Dictionary<string, EqDkpPlayer>();
         }
 
-        public async Task<bool> AddNewAlt(string charname, EqDkpPlayer main)
-        {
-            var req = new HttpRequestMessage(HttpMethod.Get, "api.php?format=json&function=character");
-            var response = await _httpClient.SendAsync(req);
-            if (response.IsSuccessStatusCode)
-            {
-                var rosterString = await response.Content.ReadAsStringAsync();
-
-                return true;
-            }
-            return false;
-        }
-
         public async Task<bool> UploadRaidLog(DateTime time,string note, ICollection<EqDkpPlayer> players)
         {
             var req = new HttpRequestMessage(HttpMethod.Post, "api.php?format=json&function=add_raid");
@@ -107,5 +94,28 @@ namespace AvengersDKPTool.Api
                 return false;
             }
         } 
+
+        public async Task<List<EqDkpRaidListModel>> GetRaidList()
+        {
+            var req = new HttpRequestMessage(HttpMethod.Get, "api.php?format=json&function=raids");
+            var response = await _httpClient.SendAsync(req);
+            if (response.IsSuccessStatusCode)
+            {
+                var rosterString = await response.Content.ReadAsStringAsync();
+                rosterString = rosterString.Replace(",\"status\":1", "");
+                try
+                {
+
+                var raidList = JsonConvert.DeserializeObject<Dictionary<string,EqDkpRaidListModel>>(rosterString);
+                return raidList.Select(x=>x.Value).ToList();
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            return new List<EqDkpRaidListModel>();
+        }
+
     }
 }

@@ -30,6 +30,7 @@ namespace AvengersDKPTool
         private HashSet<EqDkpPlayer> _mains;
         private HashSet<EqDkpPlayer> _allChars;
         private ApiMethods _api;
+        private List<EqDkpRaidListModel> _raids;
         public MainWindow()
         {
             InitializeComponent();
@@ -43,9 +44,11 @@ namespace AvengersDKPTool
 
             }
             _api = new ApiMethods(ApiToken.Text);
+            ItemLogDate.SelectedDate = DateTime.Now;
+            ItemLogDate.SelectedDateFormat = DatePickerFormat.Short;
             RefreshLists();
         }
-        private async void RefreshLists()
+        private async Task RefreshLists()
         {
             var players = await _api.GetRosterAsync();
             _allChars = players.Select(x => x.Value).ToHashSet();
@@ -69,7 +72,11 @@ namespace AvengersDKPTool
                 ApiKeyValid.Visibility = Visibility.Hidden;
                 ApiKeyInvalid.Visibility = Visibility.Visible;
             }
+            _raids = await _api.GetRaidList();
+            RaidSelectBox.ItemsSource = _raids.Where(x => x.Date.Date == DateTime.Now.Date);
+
         }
+
         private void GamePathBrowse_Click(object sender, RoutedEventArgs e)
         {
             var ookiiDialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
@@ -115,7 +122,7 @@ namespace AvengersDKPTool
                     Parsed = file.Contains("UploadedRaidRoster")
                 });
             }
-            DumpFilesList.ItemsSource = newLogs.OrderBy(x=>x.Date);
+            DumpFilesList.ItemsSource = newLogs.OrderBy(x => x.Date);
         }
         private void DumpFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -164,7 +171,12 @@ namespace AvengersDKPTool
             }
         }
 
-        private void ChatLogList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void ChatLogList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            await ParseChatLog();
+        }
+
+        private async Task ParseChatLog()
         {
             if (ChatLogList.SelectedIndex != -1)
             {
@@ -172,38 +184,78 @@ namespace AvengersDKPTool
                 if (File.Exists(path))
                 {
                     var mainRegex = new Regex("auction category.+?grat", RegexOptions.IgnoreCase);
-                    var startRegex = new Regex(@"\[(.*)\].+?auction ?category ?\d* *", RegexOptions.IgnoreCase);
-                    var endRegex = new Regex(@"(\d+) ?dkp.*", RegexOptions.IgnoreCase);
+                    var startRegex = new Regex(@"\[(.*)\].+?auction ?category[\d\, ]*", RegexOptions.IgnoreCase);
+                    var charCostRegex = new Regex(@"(\w+)[, ]*(secondary|box|main)*[, ]*(\d+) ?dkp", RegexOptions.IgnoreCase);
+                    var cleanupRegex = new Regex(@"[,\. ]+Grat.*", RegexOptions.IgnoreCase);
                     var data = new HashSet<string>();
                     var lines = File.ReadAllLines(path);
+                    var dateToShow = (DateTime)ItemLogDate.SelectedDate;
+                    var items = new List<LootGridModel>();
                     foreach (var line in lines)
                     {
                         if (mainRegex.IsMatch(line))
                         {
-                            var parsedLine = line;
-                            var date = startRegex.Match(parsedLine).Groups[1].Value;
-                            parsedLine = startRegex.Replace(parsedLine, "");
-                            var dkpAmount = endRegex.Match(parsedLine).Groups[1].Value;
-                            parsedLine = endRegex.Replace(parsedLine, "");
-                            var split = parsedLine.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-                            var type = split.Last();
-                            split = split.Where(x => x != type).ToArray();
-                            var charname = split.Last();
-                            split = split.Where(x => x != charname).ToArray();
-                            var item = string.Join(" ", split);
-                            
-                            data.Add(line);
+                            try
+                            {
+
+                                var parsedLine = line;
+                                var dateString = startRegex.Match(parsedLine).Groups[1].Value;
+                                var date = DateTime.ParseExact(dateString, "ddd MMM dd HH:mm:ss yyyy", CultureInfo.InvariantCulture);
+                                //if(date.Date != dateToShow.Date)
+                                //{
+                                //    continue;
+                                //}
+
+                                parsedLine = startRegex.Replace(parsedLine, "");
+                                var matches = charCostRegex.Matches(parsedLine);
+                                parsedLine = charCostRegex.Replace(parsedLine, "");
+                                foreach (Match match in matches)
+                                {
+                                    var charname = match.Groups[1].Value;
+                                    var type = match.Groups[2].Value;
+                                    int amount = 0;
+                                    var dkpAmount = match.Groups[3].Value;
+                                    int.TryParse(dkpAmount, out amount);
+                                    var itemName = cleanupRegex.Replace(parsedLine, "");
+                                    var item = new LootGridModel()
+                                    {
+                                        Cost = amount,
+                                        Date = date,
+                                        ItemName = itemName,
+                                        Charname = charname,
+                                        Type = string.IsNullOrEmpty(type) ? "main" : type.ToLower(),
+                                        Upload = false
+                                    };
+                                    if(item.Type == "secondary")
+                                    {
+                                        item.Calculated = Convert.ToInt32(Math.Floor((double)item.Cost / 3));
+                                    }
+                                    else if (item.Type == "box")
+                                    {
+                                        item.Calculated = Convert.ToInt32(Math.Floor((double)item.Cost / 5));
+                                    }
+                                    else
+                                    {
+                                        item.Calculated = item.Cost;
+                                    }
+                                    items.Add(item);
+                                }
+                                data.Add(line);
+                            }
+                            catch (Exception ex)
+                            {
+                                continue;
+                            }
                         }
                         else
                         {
                             continue;
                         }
                     }
-                    LootList.ItemsSource = data;
+                    LootList.ItemsSource = items;
                 }
             }
         }
-
 
 
         private async void ApiToken_TextChanged(object sender, TextChangedEventArgs e)
@@ -245,7 +297,7 @@ namespace AvengersDKPTool
         {
             var players = (ICollection<EqDkpPlayer>)AttendeeGrid.ItemsSource;
             var selectedLog = (RaidLogFileModel)DumpFilesList.SelectedItem;
-            
+
             if (await _api.UploadRaidLog(selectedLog.Date, RaidLogNote.Text, players.Where(x => x.Id > 0).ToHashSet()))
             {
                 File.Move(selectedLog.File, selectedLog.File.Replace("RaidRoster", "UploadedRaidRoster"));
@@ -267,6 +319,19 @@ namespace AvengersDKPTool
             else
             {
                 UploadLogBtn.IsEnabled = false;
+            }
+        }
+
+        private async void ItemLogDate_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ItemLogDate.SelectedDate.HasValue)
+            {
+                
+                await ParseChatLog();
+                if(_raids != null)
+                {
+                    RaidSelectBox.ItemsSource = _raids.Where(x => x.Date.Date == ItemLogDate.SelectedDate.Value.Date);
+                }
             }
         }
     }

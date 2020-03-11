@@ -109,4 +109,18 @@ namespace AvengersDKPTool.Models
         [JsonProperty(PropertyName = "member")]
         public List<int> Member { get; set; }
     }
+
+    public class EqDkpRaidListModel
+    {
+        public int Id { get; set; }
+        public DateTime Date { get; set; }
+        [JsonProperty(PropertyName = "date_timestamp")]
+        public long DateTimestamp { get; set; }
+        public string Note { get; set; }
+        [JsonProperty(PropertyName = "event_id")]
+        public int EventId { get; set; }
+        [JsonProperty(PropertyName = "event_name")]
+        public string EventName { get; set; }
+        public decimal Value { get; set; }
+    }
 }

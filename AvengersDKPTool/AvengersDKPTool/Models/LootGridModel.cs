@@ -6,12 +6,12 @@ namespace AvengersDKPTool.Models
 {
     public class LootGridModel
     {
-        public string Date { get; set; }
-        public string Category { get; set; }
-        public string Name { get; set; }
-        public string Item { get; set; }
+        public DateTime Date { get; set; }
+        public string Charname { get; set; }
+        public string ItemName { get; set; }
         public  string Type { get; set; }
         public int Cost { get; set; }
         public decimal Calculated { get; set; }
+        public bool Upload { get; set; }
     }
 }
