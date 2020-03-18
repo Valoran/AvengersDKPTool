@@ -20,8 +20,8 @@ namespace AvengersDKPTool.Api
             _apiToken = apiToken;
             _httpClient = new HttpClient();
             _httpClient.BaseAddress = new Uri("https://eq-avengers.com/api.php?format=json&");
-            _httpClient.DefaultRequestHeaders.Add("X-Custom-Authorization", "token="+_apiToken + "&type=user");
-            
+            _httpClient.DefaultRequestHeaders.Add("X-Custom-Authorization", "token=" + _apiToken + "&type=user");
+
 
         }
 
@@ -50,15 +50,23 @@ namespace AvengersDKPTool.Api
             var response = await _httpClient.SendAsync(req);
             if (response.IsSuccessStatusCode)
             {
+                try
+                {
+
                 var rosterString = await response.Content.ReadAsStringAsync();
                 var rosterObj = JsonConvert.DeserializeObject<EqDkpGetPointsModel>(rosterString);
 
                 return rosterObj.Players;
+                }
+                catch(Exception ex)
+                {
+
+                }
             }
             return new Dictionary<string, EqDkpPlayer>();
         }
 
-        public async Task<bool> UploadRaidLog(DateTime time,string note, ICollection<EqDkpPlayer> players)
+        public async Task<bool> UploadRaidLog(DateTime time, string note, ICollection<EqDkpPlayer> players)
         {
             var req = new HttpRequestMessage(HttpMethod.Post, "api.php?format=json&function=add_raid");
             var updated = time.AddMinutes(30);
@@ -93,11 +101,12 @@ namespace AvengersDKPTool.Api
                 var resp = await response.Content.ReadAsStringAsync();
                 return false;
             }
-        } 
+        }
 
         public async Task<List<EqDkpRaidListModel>> GetRaidList()
         {
             var req = new HttpRequestMessage(HttpMethod.Get, "api.php?format=json&function=raids");
+
             var response = await _httpClient.SendAsync(req);
             if (response.IsSuccessStatusCode)
             {
@@ -106,8 +115,8 @@ namespace AvengersDKPTool.Api
                 try
                 {
 
-                var raidList = JsonConvert.DeserializeObject<Dictionary<string,EqDkpRaidListModel>>(rosterString);
-                return raidList.Select(x=>x.Value).ToList();
+                    var raidList = JsonConvert.DeserializeObject<Dictionary<string, EqDkpRaidListModel>>(rosterString);
+                    return raidList.Select(x => x.Value).ToList();
                 }
                 catch (Exception ex)
                 {
@@ -117,5 +126,39 @@ namespace AvengersDKPTool.Api
             return new List<EqDkpRaidListModel>();
         }
 
+        public async Task<bool> UploadItems(int raidId, List<LootGridModel> items, ICollection<EqDkpPlayer> players)
+        {
+            bool success = true;
+            foreach (var item in items)
+            {
+                var req = new HttpRequestMessage(HttpMethod.Post, "api.php?format=json&function=add_item");
+                var newRaid = new EqDkpNewItemModel()
+                {
+                    Date = item.Date.ToString("yyyy-MM-dd HH:mm"),
+                    RaidId = raidId,
+                    Buyers = new EqDkpAttendee() { Member = players.Where(x=>x.Name.ToLower() == item.Charname.ToLower()).Select(x => x.Id).ToList() },
+                    ItempoolId = 1,
+                    Name = item.ItemName,
+                    Value = (double)Math.Floor(item.Calculated),
+                };
+                var jsonString = JsonConvert.SerializeObject(newRaid);
+                var stringContent = new StringContent(jsonString);
+                stringContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                req.Content = stringContent;
+                var response = await _httpClient.SendAsync(req);
+                if (response.IsSuccessStatusCode)
+                {
+                    var rosterString = await response.Content.ReadAsStringAsync();
+                    dynamic parsed = JsonConvert.DeserializeObject(rosterString);
+                    if (parsed.status == 1)
+                    {
+                        continue;
+                    }
+                    success = false;
+                }
+            }
+            return success;
+
+        }
     }
 }

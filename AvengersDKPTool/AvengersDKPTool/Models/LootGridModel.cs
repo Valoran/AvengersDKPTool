@@ -8,6 +8,7 @@ namespace AvengersDKPTool.Models
     {
         public DateTime Date { get; set; }
         public string Charname { get; set; }
+        public bool CharnameFound { get; set; }
         public string ItemName { get; set; }
         public  string Type { get; set; }
         public int Cost { get; set; }

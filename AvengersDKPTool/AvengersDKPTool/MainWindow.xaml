@@ -7,9 +7,15 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
+        
         <Label Content="Everquest Folder Path:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="132"/>
         <TextBox x:Name="GamePathBox" HorizontalAlignment="Left" Margin="142,14,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="374" IsEnabled="False" TextChanged="GamePathBox_TextChanged"/>
         <Button x:Name="GamePathBrowse" Content="Browse" HorizontalAlignment="Left" Margin="521,12,0,0" VerticalAlignment="Top" Click="GamePathBrowse_Click"/>
+        <Label Content="Api User Token" HorizontalAlignment="Left" Margin="48,35,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="ApiToken" HorizontalAlignment="Left" Margin="142,38,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="452" TextChanged="ApiToken_TextChanged"/>
+        <Image x:Name="ApiKeyValid" HorizontalAlignment="Left" Height="23" Margin="599,38,0,0" VerticalAlignment="Top" Width="22" Source="check.png" IsEnabled="False" Visibility="Hidden"/>
+        <Image x:Name="ApiKeyInvalid" HorizontalAlignment="Left" Height="23" Margin="599,38,0,0" VerticalAlignment="Top" Width="22" Source="cross.png" IsEnabled="False" Visibility="Hidden"/>
+        <Button x:Name="ReloadBtn" Content="Reload" HorizontalAlignment="Left" Margin="739,14,0,0" VerticalAlignment="Top" Click="ReloadBtn_Click"/>
         <TabControl Margin="0,61,0,0">
             <TabItem x:Name="AttendanceTab" Header="Attendance" IsSelected="True">
                 <Grid Background="#FFE5E5E5">
@@ -66,19 +72,36 @@
                 <Grid Background="#FFE5E5E5">
                     <ListBox x:Name="ChatLogList" Margin="0,28,573,0" MaxWidth="200" SelectionChanged="ChatLogList_SelectionChanged"/>
                     <Label Content="Logs" HorizontalAlignment="Left" Margin="10,-3,0,0" VerticalAlignment="Top"/>
-                    <DataGrid AutoGenerateColumns="False" x:Name="LootList" Margin="252,52,0,0">
+                    <DataGrid AutoGenerateColumns="False" x:Name="LootList" Margin="216,52,0,0" CanUserAddRows="False" CanUserDeleteRows="False">
                         <DataGrid.Columns>
                             <!--<DataGridTextColumn Header="Date" Width="80" Binding="{Binding Date, StringFormat='d', ConverterCulture=sv-SE}"/>-->
                             <DataGridTextColumn Header="Item" Width="180" Binding="{Binding ItemName}"/>
-                            <DataGridTextColumn Header="Character" Width="120" Binding="{Binding Charname}"/>
+                            <DataGridTextColumn Header="Character" Width="120" Binding="{Binding Charname}">
+                                <DataGridTextColumn.CellStyle>
+                                <Style TargetType="{x:Type DataGridCell}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CharnameFound}" Value="False">
+                                            <Setter Property="Background" Value="Orange" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="Type" Width="80" Binding="{Binding Type}"/>
                             <DataGridTextColumn Header="Bid" Binding="{Binding Cost}"/>
                             <DataGridTextColumn Header="Cost" Binding="{Binding Calculated}"/>
-                            <DataGridCheckBoxColumn Header="Upload" Binding="{Binding Upload}"/>
+                            <DataGridTemplateColumn Header="Upload" >
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding Upload, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <!--<DataGridCheckBoxColumn Header="Upload" Binding="{Binding Upload}"/>-->
                         </DataGrid.Columns>
                     </DataGrid>
-                    <DatePicker x:Name="ItemLogDate" HorizontalAlignment="Left" Margin="252,23,0,0" VerticalAlignment="Top" SelectedDateChanged="ItemLogDate_SelectedDateChanged" Width="128"/>
-                    <Label Content="Date" HorizontalAlignment="Left" Margin="252,0,0,0" VerticalAlignment="Top"/>
+                    <DatePicker x:Name="ItemLogDate" HorizontalAlignment="Left" Margin="216,26,0,0" VerticalAlignment="Top" SelectedDateChanged="ItemLogDate_SelectedDateChanged" Width="128"/>
+                    <Label Content="Date" HorizontalAlignment="Left" Margin="216,0,0,0" VerticalAlignment="Top"/>
                     <ComboBox x:Name="RaidSelectBox" HorizontalAlignment="Left" Margin="397,24,0,0" VerticalAlignment="Top" Width="292">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
@@ -91,7 +114,10 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                     <Label Content="Raid" HorizontalAlignment="Left" Margin="397,0,0,0" VerticalAlignment="Top"/>
-                    <Button x:Name="UploadItemsBtn" Content="Upload Selected" HorizontalAlignment="Left" Margin="694,25,0,0" VerticalAlignment="Top"/>
+                    <Button x:Name="UploadItemsBtn" Content="Upload Selected" HorizontalAlignment="Left" Margin="694,25,0,0" VerticalAlignment="Top" Click="UploadItemsBtn_Click"/>
+                    <Button x:Name="DateBackBtn" Content="⮜" HorizontalAlignment="Left" Margin="349,28,0,0" VerticalAlignment="Top" Click="DateBackBtn_Click"/>
+                    <Button x:Name="DateForwardBtn" Content="⮞" HorizontalAlignment="Left" Margin="368,28,0,0" VerticalAlignment="Top" Click="DateForwardBtn_Click"/>
+
                 </Grid>
             </TabItem>
 
@@ -121,10 +147,131 @@
                 </Grid>
             </TabItem>
         </TabControl>
-        <Label Content="Api User Token" HorizontalAlignment="Left" Margin="48,35,0,0" VerticalAlignment="Top"/>
-        <TextBox x:Name="ApiToken" HorizontalAlignment="Left" Margin="142,38,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="452" TextChanged="ApiToken_TextChanged"/>
-        <Image x:Name="ApiKeyValid" HorizontalAlignment="Left" Height="23" Margin="599,38,0,0" VerticalAlignment="Top" Width="22" Source="check.png" IsEnabled="False" Visibility="Hidden"/>
-        <Image x:Name="ApiKeyInvalid" HorizontalAlignment="Left" Height="23" Margin="599,38,0,0" VerticalAlignment="Top" Width="22" Source="cross.png" IsEnabled="False" Visibility="Hidden"/>
+        <UserControl x:Name="LoadingSpinner" Margin="0,61,0,0" Visibility="Hidden">
+            <UserControl.Resources>
+                <Color x:Key="FilledColor" A="255" B="155" R="155" G="155"/>
+                <Color x:Key="UnfilledColor" A="0" B="155" R="155" G="155"/>
 
+                <Style x:Key="BusyAnimationStyle" TargetType="Control">
+                    <Setter Property="Background" Value="#7F000000"/>
+
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Control">
+                                <ControlTemplate.Resources>
+                                    <Storyboard x:Key="Animation0" BeginTime="00:00:00.0" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse0" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+
+                                    <Storyboard x:Key="Animation1" BeginTime="00:00:00.2" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse1" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+
+                                    <Storyboard x:Key="Animation2" BeginTime="00:00:00.4" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse2" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+
+                                    <Storyboard x:Key="Animation3" BeginTime="00:00:00.6" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse3" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+
+                                    <Storyboard x:Key="Animation4" BeginTime="00:00:00.8" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse4" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+
+                                    <Storyboard x:Key="Animation5" BeginTime="00:00:01.0" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse5" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+
+                                    <Storyboard x:Key="Animation6" BeginTime="00:00:01.2" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse6" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+
+                                    <Storyboard x:Key="Animation7" BeginTime="00:00:01.4" RepeatBehavior="Forever">
+                                        <ColorAnimationUsingKeyFrames Storyboard.TargetName="ellipse7" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+                                            <SplineColorKeyFrame KeyTime="00:00:00.0" Value="{StaticResource FilledColor}"/>
+                                            <SplineColorKeyFrame KeyTime="00:00:01.6" Value="{StaticResource UnfilledColor}"/>
+                                        </ColorAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </ControlTemplate.Resources>
+
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsVisible" Value="True">
+                                        <Trigger.EnterActions>
+                                            <BeginStoryboard Storyboard="{StaticResource Animation0}" x:Name="Storyboard0" />
+                                            <BeginStoryboard Storyboard="{StaticResource Animation1}" x:Name="Storyboard1"/>
+                                            <BeginStoryboard Storyboard="{StaticResource Animation2}" x:Name="Storyboard2"/>
+                                            <BeginStoryboard Storyboard="{StaticResource Animation3}" x:Name="Storyboard3"/>
+                                            <BeginStoryboard Storyboard="{StaticResource Animation4}" x:Name="Storyboard4"/>
+                                            <BeginStoryboard Storyboard="{StaticResource Animation5}" x:Name="Storyboard5"/>
+                                            <BeginStoryboard Storyboard="{StaticResource Animation6}" x:Name="Storyboard6"/>
+                                            <BeginStoryboard Storyboard="{StaticResource Animation7}" x:Name="Storyboard7"/>
+                                        </Trigger.EnterActions>
+
+                                        <Trigger.ExitActions>
+                                            <StopStoryboard BeginStoryboardName="Storyboard0"/>
+                                            <StopStoryboard BeginStoryboardName="Storyboard1"/>
+                                            <StopStoryboard BeginStoryboardName="Storyboard2"/>
+                                            <StopStoryboard BeginStoryboardName="Storyboard3"/>
+                                            <StopStoryboard BeginStoryboardName="Storyboard4"/>
+                                            <StopStoryboard BeginStoryboardName="Storyboard5"/>
+                                            <StopStoryboard BeginStoryboardName="Storyboard6"/>
+                                            <StopStoryboard BeginStoryboardName="Storyboard7"/>
+                                        </Trigger.ExitActions>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+
+                                <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}">
+                                    <Grid>
+                                        <Canvas Height="60" Width="60">
+                                            <Canvas.Resources>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Width" Value="15"/>
+                                                    <Setter Property="Height" Value="15" />
+                                                    <Setter Property="Fill" Value="#009B9B9B" />
+                                                </Style>
+                                            </Canvas.Resources>
+
+                                            <Ellipse x:Name="ellipse0" Canvas.Left="1.75" Canvas.Top="21"/>
+                                            <Ellipse x:Name="ellipse1" Canvas.Top="7" Canvas.Left="6.5"/>
+                                            <Ellipse x:Name="ellipse2" Canvas.Left="20.5" Canvas.Top="0.75"/>
+                                            <Ellipse x:Name="ellipse3" Canvas.Left="34.75" Canvas.Top="6.75"/>
+                                            <Ellipse x:Name="ellipse4" Canvas.Left="40.5" Canvas.Top="20.75" />
+                                            <Ellipse x:Name="ellipse5" Canvas.Left="34.75" Canvas.Top="34.5"/>
+                                            <Ellipse x:Name="ellipse6" Canvas.Left="20.75" Canvas.Top="39.75"/>
+                                            <Ellipse x:Name="ellipse7" Canvas.Top="34.25" Canvas.Left="7" />
+                                            <Ellipse Width="39.5" Height="39.5" Canvas.Left="8.75" Canvas.Top="8" Visibility="Hidden"/>
+                                        </Canvas>
+                                        <Label Content="{Binding Path=Text}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </UserControl.Resources>
+            <Control Style="{StaticResource BusyAnimationStyle}"/>
+        </UserControl>
     </Grid>
 </Window>

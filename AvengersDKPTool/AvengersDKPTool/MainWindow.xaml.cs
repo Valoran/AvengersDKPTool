@@ -31,6 +31,8 @@ namespace AvengersDKPTool
         private HashSet<EqDkpPlayer> _allChars;
         private ApiMethods _api;
         private List<EqDkpRaidListModel> _raids;
+        private List<LootGridModel> _items;
+        private List<LootGridModel> _currentItems;
         public MainWindow()
         {
             InitializeComponent();
@@ -46,21 +48,13 @@ namespace AvengersDKPTool
             _api = new ApiMethods(ApiToken.Text);
             ItemLogDate.SelectedDate = DateTime.Now;
             ItemLogDate.SelectedDateFormat = DatePickerFormat.Short;
+            _currentItems = new List<LootGridModel>();
+            
             RefreshLists();
         }
         private async Task RefreshLists()
         {
-            var players = await _api.GetRosterAsync();
-            _allChars = players.Select(x => x.Value).ToHashSet();
-            _mains = new HashSet<EqDkpPlayer>();
-            foreach (var p in _allChars)
-            {
-                if (p.Active && p.Id == p.MainId)
-                {
-                    _mains.Add(p);
-                }
-            }
-            MainsList.ItemsSource = _mains;
+            LoadingSpinner.Visibility = Visibility.Visible;
             if (await _api.ValidateTokenAsync())
             {
                 File.WriteAllText(Path.Combine(_appRoot, "token.txt"), ApiToken.Text);
@@ -72,11 +66,32 @@ namespace AvengersDKPTool
                 ApiKeyValid.Visibility = Visibility.Hidden;
                 ApiKeyInvalid.Visibility = Visibility.Visible;
             }
+            var players = await _api.GetRosterAsync();
+            _allChars = players.Select(x => x.Value).ToHashSet();
+            _mains = new HashSet<EqDkpPlayer>();
+            foreach (var p in _allChars)
+            {
+                if (p.Active && p.Id == p.MainId)
+                {
+                    _mains.Add(p);
+                }
+            }
+            MainsList.ItemsSource = _mains;
+
+            await UpdateRaidlogList();
+            await UpdateRaidSelect();
+            await ParseChatLog();
+
+            if(ApiKeyValid.Visibility == Visibility.Visible)
+            {
+                LoadingSpinner.Visibility = Visibility.Hidden;
+            }
+        }
+        private async Task UpdateRaidSelect()
+        {
             _raids = await _api.GetRaidList();
             RaidSelectBox.ItemsSource = _raids.Where(x => x.Date.Date == DateTime.Now.Date);
-
         }
-
         private void GamePathBrowse_Click(object sender, RoutedEventArgs e)
         {
             var ookiiDialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
@@ -109,20 +124,23 @@ namespace AvengersDKPTool
         }
         private async Task UpdateRaidlogList()
         {
-            var newLogFiles = Directory.GetFiles(GamePathBox.Text, "*RaidRoster*.txt");
-            var dateRegex = new Regex(@"\d{8}-\d{6}");
-            var newLogs = new HashSet<RaidLogFileModel>();
-            foreach (var file in newLogFiles)
+            if (Directory.Exists(GamePathBox.Text))
             {
-                var date = DateTime.ParseExact(dateRegex.Match(file).Value, "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-                newLogs.Add(new RaidLogFileModel()
+                var newLogFiles = Directory.GetFiles(GamePathBox.Text, "*RaidRoster*.txt");
+                var dateRegex = new Regex(@"\d{8}-\d{6}");
+                var newLogs = new HashSet<RaidLogFileModel>();
+                foreach (var file in newLogFiles)
                 {
-                    Date = date,
-                    File = file,
-                    Parsed = file.Contains("UploadedRaidRoster")
-                });
+                    var date = DateTime.ParseExact(dateRegex.Match(file).Value, "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+                    newLogs.Add(new RaidLogFileModel()
+                    {
+                        Date = date,
+                        File = file,
+                        Parsed = file.Contains("UploadedRaidRoster")
+                    });
+                }
+                DumpFilesList.ItemsSource = newLogs.OrderByDescending(x => x.Date);
             }
-            DumpFilesList.ItemsSource = newLogs.OrderBy(x => x.Date);
         }
         private void DumpFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -197,15 +215,10 @@ namespace AvengersDKPTool
                         {
                             try
                             {
-
                                 var parsedLine = line;
                                 var dateString = startRegex.Match(parsedLine).Groups[1].Value;
                                 var date = DateTime.ParseExact(dateString, "ddd MMM dd HH:mm:ss yyyy", CultureInfo.InvariantCulture);
-                                //if(date.Date != dateToShow.Date)
-                                //{
-                                //    continue;
-                                //}
-
+                                
                                 parsedLine = startRegex.Replace(parsedLine, "");
                                 var matches = charCostRegex.Matches(parsedLine);
                                 parsedLine = charCostRegex.Replace(parsedLine, "");
@@ -224,6 +237,7 @@ namespace AvengersDKPTool
                                         ItemName = itemName,
                                         Charname = charname,
                                         Type = string.IsNullOrEmpty(type) ? "main" : type.ToLower(),
+                                        CharnameFound = _mains.Any(x => x.Name.ToLower() == charname.ToLower()),
                                         Upload = false
                                     };
                                     if(item.Type == "secondary")
@@ -252,7 +266,9 @@ namespace AvengersDKPTool
                             continue;
                         }
                     }
-                    LootList.ItemsSource = items;
+                    _items = items;
+                    _currentItems = _items.Where(x => x.Date.Date == dateToShow.Date).ToList();
+                    LootList.ItemsSource = _currentItems;
                 }
             }
         }
@@ -302,6 +318,7 @@ namespace AvengersDKPTool
             {
                 File.Move(selectedLog.File, selectedLog.File.Replace("RaidRoster", "UploadedRaidRoster"));
                 await UpdateRaidlogList();
+                await UpdateRaidSelect();
                 MessageBox.Show("Raidlog " + selectedLog.Date.ToString("yyyy-MM-dd HH:mm") + " uploaded!", "Upload Successful", MessageBoxButton.OK);
             }
             else
@@ -326,13 +343,58 @@ namespace AvengersDKPTool
         {
             if (ItemLogDate.SelectedDate.HasValue)
             {
+                if (_items != null)
+                {
+                    _currentItems = _items.Where(x => x.Date.Date == ItemLogDate.SelectedDate.Value.Date).ToList();
+                    LootList.ItemsSource = _currentItems;
+                }
                 
-                await ParseChatLog();
                 if(_raids != null)
                 {
+                    RaidSelectBox.SelectedIndex = -1;
                     RaidSelectBox.ItemsSource = _raids.Where(x => x.Date.Date == ItemLogDate.SelectedDate.Value.Date);
                 }
             }
+        }
+
+        private async void ReloadBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var debugger = 0;
+            //await RefreshLists();
+        }
+
+        private void DateBackBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (ItemLogDate.SelectedDate.HasValue)
+            {
+                ItemLogDate.SelectedDate = ItemLogDate.SelectedDate.Value.AddDays(-1);
+            }
+        }
+
+        private void DateForwardBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (ItemLogDate.SelectedDate.HasValue)
+            {
+                ItemLogDate.SelectedDate = ItemLogDate.SelectedDate.Value.AddDays(1);
+            }
+        }
+
+        private async void UploadItemsBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if(RaidSelectBox.SelectedIndex != -1)
+            {
+                var raid = (EqDkpRaidListModel)RaidSelectBox.SelectedItem;
+                var items = _currentItems.Where(x => x.Upload == true).ToList();
+                if(await _api.UploadItems(raid.Id, items, _mains))
+                {
+                    MessageBox.Show("Items Uploaded", "Success", MessageBoxButton.OK);
+                }
+                else
+                {
+                    MessageBox.Show("Upload failed.", "Error", MessageBoxButton.OK);
+                }
+            }
+
         }
     }
 }

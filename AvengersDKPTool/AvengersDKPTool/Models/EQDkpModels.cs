@@ -37,7 +37,7 @@ namespace AvengersDKPTool.Models
     {
         [JsonProperty(PropertyName = "with_twink")]
         public bool WithTwink { get; set; }
-        public DateTime Date { get; set; }
+        //public DateTime Date { get; set; }
         public string Timestamp { get; set; }
         [JsonProperty(PropertyName = "total_players")]
         public int TotalPlayers { get; set; }
@@ -103,6 +103,22 @@ namespace AvengersDKPTool.Models
         public int RaidEventId { get; set; }
         [JsonProperty(PropertyName = "raid_note")]
         public string RaidNote { get; set; }
+    }
+    public class EqDkpNewItemModel
+    {
+        [JsonProperty(PropertyName = "item_date")]
+        public string Date { get; set; }
+        [JsonProperty(PropertyName = "item_name")]
+        public string Name { get; set; }
+        [JsonProperty(PropertyName = "item_buyers")]
+        public EqDkpAttendee Buyers { get; set; }
+        [JsonProperty(PropertyName = "item_raid_id")]
+        public int RaidId { get; set; }
+        [JsonProperty(PropertyName = "item_value")]
+        public double Value { get; set; }
+        [JsonProperty(PropertyName = "item_itempool_id")]
+        public int ItempoolId { get; set; }
+        
     }
     public class EqDkpAttendee
     {
