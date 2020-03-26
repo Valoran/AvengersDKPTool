@@ -284,6 +284,7 @@ namespace AvengersDKPTool
                     File.WriteAllText(Path.Combine(_appRoot, "token.txt"), ApiToken.Text);
                     ApiKeyValid.Visibility = Visibility.Visible;
                     ApiKeyInvalid.Visibility = Visibility.Hidden;
+                    await RefreshLists();
                 }
                 else
                 {
@@ -313,16 +314,18 @@ namespace AvengersDKPTool
         {
             var players = (ICollection<EqDkpPlayer>)AttendeeGrid.ItemsSource;
             var selectedLog = (RaidLogFileModel)DumpFilesList.SelectedItem;
-
+            LoadingSpinner.Visibility = Visibility.Visible;
             if (await _api.UploadRaidLog(selectedLog.Date, RaidLogNote.Text, players.Where(x => x.Id > 0).ToHashSet()))
             {
                 File.Move(selectedLog.File, selectedLog.File.Replace("RaidRoster", "UploadedRaidRoster"));
                 await UpdateRaidlogList();
                 await UpdateRaidSelect();
+                LoadingSpinner.Visibility = Visibility.Hidden;
                 MessageBox.Show("Raidlog " + selectedLog.Date.ToString("yyyy-MM-dd HH:mm") + " uploaded!", "Upload Successful", MessageBoxButton.OK);
             }
             else
             {
+                LoadingSpinner.Visibility = Visibility.Hidden;
                 MessageBox.Show("Raidlog " + selectedLog.Date.ToString("yyyy-MM-dd HH:mm") + " failed to upload.", "Upload Failed", MessageBoxButton.OK);
             }
         }
@@ -359,8 +362,7 @@ namespace AvengersDKPTool
 
         private async void ReloadBtn_Click(object sender, RoutedEventArgs e)
         {
-            var debugger = 0;
-            //await RefreshLists();
+            await RefreshLists();
         }
 
         private void DateBackBtn_Click(object sender, RoutedEventArgs e)
@@ -385,13 +387,16 @@ namespace AvengersDKPTool
             {
                 var raid = (EqDkpRaidListModel)RaidSelectBox.SelectedItem;
                 var items = _currentItems.Where(x => x.Upload == true).ToList();
-                if(await _api.UploadItems(raid.Id, items, _mains))
+                LoadingSpinner.Visibility = Visibility.Visible;
+                if (await _api.UploadItems(raid.Id, items, _mains))
                 {
-                    MessageBox.Show("Items Uploaded", "Success", MessageBoxButton.OK);
+                    LoadingSpinner.Visibility = Visibility.Hidden;
+                    MessageBox.Show(this,"Items Uploaded", "Success", MessageBoxButton.OK);
                 }
                 else
                 {
-                    MessageBox.Show("Upload failed.", "Error", MessageBoxButton.OK);
+                    LoadingSpinner.Visibility = Visibility.Hidden;
+                    MessageBox.Show(this, "Upload failed.", "Error", MessageBoxButton.OK);
                 }
             }
 
