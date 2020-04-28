@@ -203,7 +203,7 @@ namespace AvengersDKPTool
                 {
                     var mainRegex = new Regex("auction category.+?grat", RegexOptions.IgnoreCase);
                     var startRegex = new Regex(@"\[(.*)\].+?auction ?category[\d\, ]*", RegexOptions.IgnoreCase);
-                    var charCostRegex = new Regex(@"(\w+)[, ]*(secondary|box|main)*[, ]*(\d+) ?dkp", RegexOptions.IgnoreCase);
+                    var charCostRegex = new Regex(@"(\w+)[, ]*(secondary|sec|box|main)*[, ]*(\d+) ?dkp", RegexOptions.IgnoreCase);
                     var cleanupRegex = new Regex(@"[,\. ]+Grat.*", RegexOptions.IgnoreCase);
                     var data = new HashSet<string>();
                     var lines = File.ReadAllLines(path);
@@ -240,7 +240,7 @@ namespace AvengersDKPTool
                                         CharnameFound = _mains.Any(x => x.Name.ToLower() == charname.ToLower()),
                                         Upload = false
                                     };
-                                    if(item.Type == "secondary")
+                                    if(item.Type == "secondary" || item.Type == "sec")
                                     {
                                         item.Calculated = Convert.ToInt32(Math.Floor((double)item.Cost / 3));
                                     }
