@@ -246,7 +246,7 @@ namespace AvengersDKPTool
                                     }
                                     else if (item.Type == "box")
                                     {
-                                        item.Calculated = Convert.ToInt32(Math.Floor((double)item.Cost / 5));
+                                        item.Calculated = Convert.ToInt32(Math.Floor((double)item.Cost / 6));
                                     }
                                     else
                                     {
